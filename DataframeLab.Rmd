@@ -8,6 +8,9 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(dplyr)
+library(palmerpenguins) 
+data(package = 'palmerpenguins')
 ```
 
 # Working with loaded in csv files
@@ -30,7 +33,7 @@ Because you're in an RProject, you don't need to set your working directory in R
 - Use the glimpse function to look at the loaded data
 
 ```{r}
-
+glimpse(grants)
 
 ```
 
@@ -38,7 +41,7 @@ Because you're in an RProject, you don't need to set your working directory in R
 - Create a variable `org` that contains the `organization` column of the dataset
 
 ```{r}
-
+org <- grants$organization
 
 ```
 
@@ -46,7 +49,7 @@ Because you're in an RProject, you don't need to set your working directory in R
 - Confirm that the "organization" column is a vector using the `is.vector()` function. (This is a useful debugging tip if you hit errors later!)
 
 ```{r}
-
+is.vector(org)
 
 ```
 
@@ -56,28 +59,28 @@ Now you can ask some interesting questions about the dataset:
 - What was the mean grant value?
 
 ```{r}
-
+mean(grants$total_amount)
 ```
 
 
 - What was the dollar amount of the largest grant?
 
 ```{r}
-
+max(grants$total_amount)
 ```
 
 
 - What was the dollar amount of the smallest grant?
 
 ```{r}
-
+min(grants$total_amount)
 ```
 
 
 - Which organization received the largest grant?
 
 ```{r}
-
+org[which(grants$total_amount == max(grants$total_amount))]
 
 ```
 
@@ -85,19 +88,19 @@ Now you can ask some interesting questions about the dataset:
 - Which organization received the smallest grant?
 
 ```{r}
-
+org[which(grants$total_amount == min(grants$total_amount))]
 ```
 
 - How many grants were awarded in 2010?
 
 ```{r}
-
+length(grants$start_year[grants$start_year == 2010])
 ```
 
 - How much was awarded in 2010? 
 
 ```{r}
-
+sum(grants$total_amount[grants$start_year == 2010])
 ```
 
 
@@ -123,13 +126,13 @@ Luckily, you can pass the USPersonalExpenditure variable as an argument to the `
 Do this, storing the result in a new variable
 
 ```{r}
-
+USPersonalExpenditure <- data.frame(USPersonalExpenditure)
 ```
 
 
 What are the current column names of your dataframe?
 ```{r}
-
+colnames(USPersonalExpenditure)
 ```
 
 
@@ -137,47 +140,75 @@ Consider: why are they so strange? (Think about whether you could use a number l
 
 What are the current row names of your dataframe?
 ```{r}
-
+rownames(USPersonalExpenditure)
 ```
 
 
 Add a column "Category" to your data frame that contains the rownames
 
 ```{r}
-
+USPersonalExpenditure$Category <- rownames(USPersonalExpenditure)
+USPersonalExpenditure
 ```
 
 Consider how this data isn't tidy. Use the `pivot_longer()` function from last class to make the data tidy. 
 
 ```{r}
-
+USPersonalExpenditure<- pivot_longer(USPersonalExpenditure, c("X1940", "X1945", "X1950", "X1955", "X1960"), names_to="Year", values_to="Money_Spent")
+USPersonalExpenditure
 ```
 
 
 How much money was spent on personal care in 1940?
 ```{r}
-
+USPersonalExpenditure$Money_Spent[(USPersonalExpenditure$Year == "X1940") & (USPersonalExpenditure$Category == "Personal Care")]
 ```
 
 
 How much money was spent on Food and Tobacco in 1960?
 ```{r}
-
+USPersonalExpenditure$Money_Spent[(USPersonalExpenditure$Year == "X1960") & (USPersonalExpenditure$Category == "Food and Tobacco")]
 
 ```
 
 
 What was the highest expenditure category in 1960?
 ```{r}
+expenditure_sums <- list(
+  Med_Health = USPersonalExpenditure$Money_Spent[(USPersonalExpenditure$Category == "Medical and Health") & (USPersonalExpenditure$Year == "X1960")],            
+  Personal_care = USPersonalExpenditure$Money_Spent[(USPersonalExpenditure$Category == "Personal Care") & (USPersonalExpenditure$Year == "X1960")], 
+  Food_Tobacco = USPersonalExpenditure$Money_Spent[(USPersonalExpenditure$Category == "Food and Tobacco") & (USPersonalExpenditure$Year == "X1960")], 
+  Household_op = USPersonalExpenditure$Money_Spent[(USPersonalExpenditure$Category == "Household Operation") & (USPersonalExpenditure$Year == "X1960")], 
+  Priv_Ed = USPersonalExpenditure$Money_Spent[(USPersonalExpenditure$Category == "Private Education") & (USPersonalExpenditure$Year == "X1960")]
+)
 
+expenditure_sums
+which.max(expenditure_sums)
 
+max_spend <- max(USPersonalExpenditure[USPersonalExpenditure$Year == 'X1960', 'Money_Spent'])
+USPersonalExpenditure$Category[USPersonalExpenditure$Money_Spent == max_spend] 
+
+USPersonalExpenditure %>% group_by(Year) %>% slice_max(Money_Spent)
 ```
 
 
 Define a function `lowest_category` that takes in a year as a parameter, and returns the lowest spending category of that year
 ```{r}
+lowest_category <- function(year) {
+  expenditure_sums1 <- list(
+  Med_Health = sum(USPersonalExpenditure$Money_Spent[(USPersonalExpenditure$Category == "Medical and Health") & (USPersonalExpenditure$Year == paste0("X", year))]),  
+  Personal_care = sum(USPersonalExpenditure$Money_Spent[(USPersonalExpenditure$Category == "Personal Care") & (USPersonalExpenditure$Year == paste0("X", year))]), 
+  Food_Tobacco = sum(USPersonalExpenditure$Money_Spent[(USPersonalExpenditure$Category == "Food and Tobacco") & (USPersonalExpenditure$Year == paste0("X", year))]), 
+  Household_op = sum(USPersonalExpenditure$Money_Spent[(USPersonalExpenditure$Category == "Household Operation") & (USPersonalExpenditure$Year == paste0("X", year))]), 
+  Priv_Ed = sum(USPersonalExpenditure$Money_Spent[(USPersonalExpenditure$Category == "Private Education") & (USPersonalExpenditure$Year == paste0("X", year))])
+  )
+  lowest_cat <- which.min(expenditure_sums1)
+  return(c(lowest_cat, expenditure_sums1))
+}
 
+lowest_category("1960")
 
+lowest_category("1945")
 
 ```
 
@@ -191,4 +222,50 @@ Hint: use the `sapply()` function to apply your function to a vector of years
 
 ```{r}
 
+```
+
+``` {r personal-practice}
+name <- c("John", "Adam", "Lili", "Billy", "Oumayma", "Phung", "Manuel")
+
+age <- c(19, 20, 18, 26, 26, 21, 21)
+
+in_MATH3302 <- c(TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE)
+
+my_df <- data.frame(name, age, in_MATH3302)
+
+# as.factor can be used to store information when there are multiple rows with the same piece of information in a column
+
+nrow(my_df)
+
+colnames(my_df) <- c("Name", "Age", "in_MATH3302")
+
+# rownames_to_columns(df, var) converts the row names to column names
+
+glimpse(penguins)
+
+# View(penguins)
+
+my_df$Age
+
+my_df[["Age"]]
+
+my_df[4, "in_MATH3302"]
+
+my_df[my_df["in_MATH3302"] == FALSE, ]
+# above and below are same thing
+my_df[my_df$in_MATH3302 == FALSE, ]
+
+# exercise
+pts <- c(1, 0, 3, 1)
+pts_allowed <- c(5, 0, 2, 3)
+
+games <- data.frame(pts, pts_allowed)
+
+games$diff <- pts - pts_allowed
+
+games$won <- games$diff > 0
+
+games$opponents <- c("North Caroline Courage", "Racing Louisville", "Bay FC", "Washington Spirit")
+
+games
 ```
